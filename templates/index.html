@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milestone Vault | BCS601</title>
+    
+    <!-- CSS & Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+        
+        body { 
+            background: radial-gradient(circle at top right, #1e293b, #0f172a); 
+            font-family: 'Inter', sans-serif; 
+        }
+
+        .glass { 
+            background: rgba(255, 255, 255, 0.03); 
+            backdrop-filter: blur(12px); 
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        
+        /* Custom styles for the SweetAlert inputs to match our theme */
+        .swal-custom-input {
+            background: #1e293b !important;
+            color: white !important;
+            border: 1px solid #334155 !important;
+            border-radius: 10px !important;
+        }
+    </style>
+</head>
+<body class="text-slate-200 min-h-screen p-4 md:p-8 flex justify-center items-center">
+
+    <div class="glass max-w-2xl w-full rounded-[2rem] p-8 md:p-12 shadow-2xl">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-black tracking-tight bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                Milestone Vault
+            </h1>
+            <p class="text-slate-500 text-xs mt-2 uppercase tracking-[0.2em] font-bold">Cloud Achievement Tracker</p>
+        </header>
+
+        <form action="/add" method="POST" class="space-y-4 mb-12">
+            <div class="group relative">
+                <input type="text" name="content" placeholder="What achievement are we logging?" required
+                    class="w-full bg-slate-800/40 border border-slate-700/50 p-4 rounded-2xl focus:ring-2 focus:ring-cyan-500/50 outline-none transition-all placeholder:text-slate-600">
+            </div>
+            
+            <div class="flex flex-col sm:flex-row gap-4">
+                <input type="date" name="date" required id="datePicker"
+                    class="bg-slate-800/40 border border-slate-700/50 p-4 rounded-2xl flex-1 outline-none text-slate-400 focus:ring-2 focus:ring-cyan-500/50 transition-all">
+                
+                <button type="submit" 
+                    class="bg-gradient-to-br from-cyan-600 to-blue-700 hover:from-cyan-500 hover:to-blue-600 px-10 py-4 rounded-2xl font-bold transition-all transform active:scale-95 shadow-lg shadow-cyan-500/10">
+                    Log Milestone
+                </button>
+            </div>
+        </form>
+
+        <div class="space-y-6">
+            <div class="flex justify-between items-end border-b border-slate-800 pb-3">
+                <h2 class="text-lg font-extrabold text-slate-300">Your Cloud Logs</h2>
+            </div>
+
+            <div class="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                {% if entries %}
+                    {% for entry in entries %}
+                    <div class="group bg-white/5 border border-white/5 p-5 rounded-2xl flex justify-between items-center hover:bg-white/10 hover:border-white/10 transition-all">
+                        <div class="flex flex-col gap-1">
+                            <span class="text-slate-200 font-semibold leading-tight">{{ entry.title }}</span>
+                            <span class="text-[10px] text-cyan-500 font-bold uppercase tracking-wider">{{ entry.date_achieved }}</span>
+                        </div>
+                        
+                        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <!-- Edit Button (Now passing 3 arguments) -->
+                            <button onclick="editMilestone('{{ entry.id }}', '{{ entry.title }}', '{{ entry.date_achieved }}')" 
+                                class="p-2.5 bg-blue-500/10 hover:bg-blue-500/20 rounded-xl text-blue-400 text-xs font-bold transition-colors">
+                                Edit
+                            </button>
+                            <button onclick="confirmDelete('{{ entry.id }}')" 
+                                class="p-2.5 bg-red-500/10 hover:bg-red-500/20 rounded-xl text-red-400 text-xs font-bold transition-colors">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-12 border-2 border-dashed border-slate-800/50 rounded-3xl">
+                        <p class="text-slate-600 italic text-sm">No milestones logged yet. Start your journey!</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('datePicker').valueAsDate = new Date();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('success') === '1') {
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.7 },
+                colors: ['#22d3ee', '#3b82f6', '#ffffff']
+            });
+
+            Swal.fire({
+                title: 'Achievement Locked!',
+                text: 'Your milestone is now stored in the cloud.',
+                icon: 'success',
+                background: '#1e293b',
+                color: '#fff',
+                confirmButtonColor: '#0891b2',
+                timer: 3500,
+                showConfirmButton: false
+            });
+            window.history.replaceState({}, document.title, "/");
+        }
+
+        function confirmDelete(id) {
+            Swal.fire({
+                title: 'Delete Milestone?',
+                text: "This action cannot be undone on the server.",
+                icon: 'warning',
+                showCancelButton: true,
+                background: '#1e293b',
+                color: '#fff',
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#334155',
+                confirmButtonText: 'Yes, delete it'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = `/delete/${id}`;
+                }
+            });
+        }
+
+        // --- UPDATED EDIT LOGIC ---
+        async function editMilestone(id, currentTitle, currentDate) {
+            const { value: formValues } = await Swal.fire({
+                title: 'Update Milestone',
+                background: '#1e293b',
+                color: '#fff',
+                confirmButtonColor: '#0891b2',
+                showCancelButton: true,
+                html:
+                    `<div style="text-align:left;">` +
+                    `<label style="font-size:12px; color:#94a3b8;">Achievement Name</label>` +
+                    `<input id="swal-input1" class="swal2-input swal-custom-input" style="width:100%; margin: 10px 0 20px 0;" value="${currentTitle}">` +
+                    `<label style="font-size:12px; color:#94a3b8;">Date Achieved</label>` +
+                    `<input id="swal-input2" type="date" class="swal2-input swal-custom-input" style="width:100%; margin: 10px 0 0 0;" value="${currentDate}">` +
+                    `</div>`,
+                focusConfirm: false,
+                preConfirm: () => {
+                    return [
+                        document.getElementById('swal-input1').value,
+                        document.getElementById('swal-input2').value
+                    ]
+                }
+            });
+
+            if (formValues) {
+                const [newTitle, newDate] = formValues;
+                
+                if (!newTitle || !newDate) {
+                    Swal.fire({ icon: 'error', title: 'Empty Fields', text: 'Both title and date are required!', background: '#1e293b', color: '#fff' });
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('new_title', newTitle);
+                formData.append('new_date', newDate);
+                
+                fetch(`/edit/${id}`, {
+                    method: 'POST',
+                    body: formData
+                }).then(() => window.location.reload());
+            }
+        }
+    </script>
+</body>
+</html>
